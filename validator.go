@@ -7,6 +7,14 @@ type Validator struct {
 	steps          []func(any) error
 }
 
+func NewValidator(validable any, breakOnFailure bool) Validator {
+	return Validator{
+		validable:      validable,
+		breakOnFailure: breakOnFailure,
+		steps:          []func(any) error{},
+	}
+}
+
 func (v *Validator) AddStep(step func(any) error) {
 	v.steps = append(v.steps, step)
 }

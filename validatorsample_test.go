@@ -1,15 +1,5 @@
-# validator-go
-Flexible validator for Go
+package validatorgo
 
-# installation
-
-```
-go get github.com/cgxarrie/validator-go.git
-```
-
-# Sample of use
-
-```
 import (
 	"errors"
 	"fmt"
@@ -22,7 +12,7 @@ type validable struct {
 	age     int
 }
 
-func main() {
+func TestValidator_ValidatorSample(t *testing.T) {
 
 	validable := validable{
 		name:    "John",
@@ -67,4 +57,3 @@ func ageShouldBeOver17(a any) error {
 	}
 	return nil
 }
-```

@@ -126,7 +126,7 @@ validator error : name is empty
 ```
 
 
-## Validator with Brek on failure declared at step level
+## Validator with break on failure declared at step level
 
 ```
 import (
@@ -147,7 +147,7 @@ func main() {
 	validator := NewValidator(validable)
 
 	validator.AddStep(nameShouldNotBeEmpty)
-	validator.AddStep(surnameShouldNotBeEmpty).BreakOnFailure
+	validator.AddStep(surnameShouldNotBeEmpty).BreakOnFailure()
 	validator.AddStep(ageShouldBeOver17)
 
 	result := validator.Validate()

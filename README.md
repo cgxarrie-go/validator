@@ -9,7 +9,7 @@ go get github.com/cgxarrie/validator-go.git
 
 # Sample of use
 
-**Declare vañidable struct**
+**Declare validable struct**
 ```
 type validable struct {
 	name    string
@@ -64,7 +64,7 @@ func main() {
 		age:     15,
 	}
 
-	validator := NewValidator(validable, false)
+	validator := NewValidator(validable)
 
 	validator.AddStep(nameShouldNotBeEmpty)
 	validator.AddStep(surnameShouldNotBeEmpty)
@@ -104,7 +104,7 @@ func main() {
 		age:     15,
 	}
 
-	validator := NewValidator(validable, false).BreakOnFailure()
+	validator := NewValidator(validable).BreakOnFailure()
 
 	validator.AddStep(nameShouldNotBeEmpty)
 	validator.AddStep(surnameShouldNotBeEmpty)
@@ -144,7 +144,7 @@ func main() {
 		age:     15,
 	}
 
-	validator := NewValidator(validable, false)
+	validator := NewValidator(validable)
 
 	validator.AddStep(nameShouldNotBeEmpty)
 	validator.AddStep(surnameShouldNotBeEmpty).BreakOnFailure

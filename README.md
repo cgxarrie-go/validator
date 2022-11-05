@@ -144,7 +144,7 @@ func main() {
 		age:     15,
 	}
 
-	validator := NewValidator(validablegit add .)
+	validator := NewValidator(validable)
 
 	validator.AddStep(nameShouldNotBeEmpty)
 	validator.AddStep(surnameShouldNotBeEmpty).BreakOnFailure

@@ -20,7 +20,7 @@ func TestValidator_ValidatorSample(t *testing.T) {
 		age:     15,
 	}
 
-	validator := NewValidator(validable, false)
+	validator := NewValidator(validable)
 
 	validator.AddStep(nameShouldNotBeEmpty)
 	validator.AddStep(surnameShouldNotBeEmpty)

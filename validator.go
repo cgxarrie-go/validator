@@ -4,19 +4,32 @@ package validatorgo
 type Validator struct {
 	validable      any
 	breakOnFailure bool
-	steps          []func(any) error
+	steps          []ValidationStep
 }
 
-func NewValidator(validable any, breakOnFailure bool) Validator {
-	return Validator{
+func NewValidator(validable any) *Validator {
+	v := Validator{
 		validable:      validable,
-		breakOnFailure: breakOnFailure,
-		steps:          []func(any) error{},
+		breakOnFailure: false,
+		steps:          []ValidationStep{},
 	}
+	return &v
 }
 
-func (v *Validator) AddStep(step func(any) error) {
-	v.steps = append(v.steps, step)
+//BreakOnFailure forces teh validator to stop on the first validation step failure
+func (v *Validator) BreakOnFailure() *Validator {
+	v.breakOnFailure = true
+	return v
+}
+
+func (v *Validator) AddStep(step func(any) error) *ValidationStep {
+	vs := ValidationStep{
+		fn:             step,
+		breakOnFailure: false,
+	}
+	v.steps = append(v.steps, vs)
+
+	return &v.steps[len(v.steps)-1]
 }
 
 func (v Validator) Validate() Result {
@@ -24,13 +37,13 @@ func (v Validator) Validate() Result {
 	resp := Result{}
 
 	for _, step := range v.steps {
-		err := step(v.validable)
+		err := step.fn(v.validable)
 		if err == nil {
 			continue
 		}
 
 		resp.addError(err)
-		if v.breakOnFailure {
+		if v.breakOnFailure || step.breakOnFailure {
 			return resp
 		}
 	}

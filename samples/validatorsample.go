@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 
-	validatorgo "github.com/cgxarrie/validator-go.git"
+	validatorgo "github.com/cgxarrie/govalidator"
 )
 
 type validable struct {

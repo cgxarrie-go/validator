@@ -1,4 +1,4 @@
-package validatorgo
+package govalidator
 
 import (
 	"errors"

@@ -1,4 +1,4 @@
-package validatorgo
+package govalidator
 
 // Validator
 type Validator struct {

@@ -1,3 +1,3 @@
-module github.com/cgxarrie/validator-go
+module github.com/cgxarrie/govalidator
 
 go 1.18

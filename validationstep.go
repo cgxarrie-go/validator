@@ -1,4 +1,4 @@
-package validatorgo
+package govalidator
 
 type ValidationStep struct {
 	fn             func(any) error

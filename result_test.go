@@ -1,8 +1,9 @@
-package govalidator
+package validator
 
 import (
 	"errors"
 	"testing"
+
 )
 
 func TestResult_addError(t *testing.T) {

@@ -1,25 +1,47 @@
-package govalidator
+package validator
 
 import (
 	"errors"
 	"strings"
 	"testing"
+
+	"github.com/magiconair/properties/assert"
 )
 
-func TestValidator_AddStep(t *testing.T) {
+func TestBaseValidator_New_ShouldReturnNoBreakOnFailure(t *testing.T) {
 
-	type validable struct {
-		a int64
-		b int64
-	}
+	// Arrange
 
-	v := NewValidator(validable{a: 10, b: 20})
+	// Act
+	v := NewBaseValidator()
+
+	// Assert
+	assert.Equal(t, false, v.breakOnFailure)
+	assert.Equal(t, 0, len(v.steps))
+}
+
+func TestBaseValidator_NewBreakOnFailure_ShouldReturnBreakOnFailure(t *testing.T) {
+
+	// Arrange
+
+	// Act
+	v := NewBaseValidator()
+	v.BreakOnFailure()
+
+	// Assert
+	assert.Equal(t, true, v.breakOnFailure)
+	assert.Equal(t, 0, len(v.steps))
+}
+
+func TestBaseValidator_AddStep(t *testing.T) {
+
+	v := BaseValidator{}
 
 	if expected, got := 0, len(v.steps); expected != got {
 		t.Errorf("Unexpected steps count. Expected: %v but got: %v", expected, got)
 	}
 
-	v.AddStep(func(a any) error {
+	v.AddStep(func() error {
 		return nil
 	})
 
@@ -27,7 +49,7 @@ func TestValidator_AddStep(t *testing.T) {
 		t.Errorf("Unexpected steps count. Expected: %v but got: %v", expected, got)
 	}
 
-	v.AddStep(func(a any) error {
+	v.AddStep(func() error {
 		return nil
 	})
 
@@ -36,15 +58,10 @@ func TestValidator_AddStep(t *testing.T) {
 	}
 }
 
-func TestValidator_Validate_FailedStepShouldReturnFailure(t *testing.T) {
+func TestBaseValidator_Validate_FailedStepShouldReturnFailure(t *testing.T) {
 
-	type validable struct {
-		a int64
-		b int64
-	}
-
-	v := NewValidator(validable{a: 10, b: 20})
-	v.AddStep(func(a any) error {
+	v := BaseValidator{}
+	v.AddStep(func() error {
 		return errors.New("error-step-01")
 	})
 
@@ -55,15 +72,10 @@ func TestValidator_Validate_FailedStepShouldReturnFailure(t *testing.T) {
 	}
 }
 
-func TestValidator_Validate_SuccessStepShouldReturnSuccess(t *testing.T) {
+func TestBaseValidator_Validate_SuccessStepShouldReturnSuccess(t *testing.T) {
 
-	type validable struct {
-		a int64
-		b int64
-	}
-
-	v := NewValidator(validable{a: 10, b: 20})
-	v.AddStep(func(a any) error {
+	v := BaseValidator{}
+	v.AddStep(func() error {
 		return nil
 	})
 
@@ -74,19 +86,14 @@ func TestValidator_Validate_SuccessStepShouldReturnSuccess(t *testing.T) {
 	}
 }
 
-func TestValidator_Validate_BreakOnFailureFalseShouldReturnAllErrors(t *testing.T) {
+func TestBaseValidator_Validate_BreakOnFailureFalseShouldReturnAllErrors(t *testing.T) {
 
-	type validable struct {
-		a int64
-		b int64
-	}
-
-	v := NewValidator(validable{a: 10, b: 20})
-	v.AddStep(func(a any) error {
+	v := BaseValidator{}
+	v.AddStep(func() error {
 		return errors.New("error-step-01")
 	})
 
-	v.AddStep(func(a any) error {
+	v.AddStep(func() error {
 		return errors.New("error-step-02")
 	})
 
@@ -109,19 +116,16 @@ func TestValidator_Validate_BreakOnFailureFalseShouldReturnAllErrors(t *testing.
 	}
 }
 
-func TestValidator_Validate_BreakOnFailureTrueShouldReturnFirstError(t *testing.T) {
+func TestBaseValidator_Validate_BreakOnFailureTrueShouldReturnFirstError(t *testing.T) {
 
-	type validable struct {
-		a int64
-		b int64
-	}
+	v := NewBaseValidator()
+	v.BreakOnFailure()
 
-	v := NewValidator(validable{a: 10, b: 20}).BreakOnFailure()
-	v.AddStep(func(a any) error {
+	v.AddStep(func() error {
 		return errors.New("error-step-01")
 	})
 
-	v.AddStep(func(a any) error {
+	v.AddStep(func() error {
 		return errors.New("error-step-02")
 	})
 
@@ -144,23 +148,18 @@ func TestValidator_Validate_BreakOnFailureTrueShouldReturnFirstError(t *testing.
 	}
 }
 
-func TestValidator_Validate_ValidationStepBreakOnFailureTrueShouldReturnErrorsUntilStep(t *testing.T) {
+func TestBaseValidator_Validate_ValidationStepBreakOnFailureTrueShouldReturnErrorsUntilStep(t *testing.T) {
 
-	type validable struct {
-		a int64
-		b int64
-	}
-
-	v := NewValidator(validable{a: 10, b: 20})
-	v.AddStep(func(a any) error {
+	v := BaseValidator{}
+	v.AddStep(func() error {
 		return errors.New("error-step-01")
 	})
 
-	v.AddStep(func(a any) error {
+	v.AddStepWithBreakOnFailure(func() error {
 		return errors.New("error-step-02")
-	}).BreakOnFailure()
+	})
 
-	v.AddStep(func(a any) error {
+	v.AddStep(func() error {
 		return errors.New("error-step-03")
 	})
 

@@ -1,4 +1,4 @@
-# validator-go
+# validator
 Flexible validator for Go
 
 # installation

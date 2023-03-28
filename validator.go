@@ -1,43 +1,67 @@
-package govalidator
+package validator
 
-// Validator
-type Validator struct {
-	validable      any
+// Validator .
+type Validator interface {
+	Validate() Result
+}
+
+// BaseValidator describres a validation process
+type BaseValidator struct {
 	breakOnFailure bool
-	steps          []ValidationStep
+	steps          []validationStep
 }
 
-func NewValidator(validable any) *Validator {
-	v := Validator{
-		validable:      validable,
+// ValidationStep represents a step in the validation process
+type validationStep struct {
+	fn             func() error
+	breakOnFailure bool
+}
+
+// NewBaseValidator instantiates a base validator
+// All validation steps will be run
+func NewBaseValidator() BaseValidator {
+	return BaseValidator{
 		breakOnFailure: false,
-		steps:          []ValidationStep{},
+		steps:          []validationStep{},
 	}
-	return &v
 }
 
-//BreakOnFailure forces teh validator to stop on the first validation step failure
-func (v *Validator) BreakOnFailure() *Validator {
+// BreakOnFailure sets the validator to stop after first failure found.
+func (v *BaseValidator) BreakOnFailure() *BaseValidator {
 	v.breakOnFailure = true
 	return v
 }
 
-func (v *Validator) AddStep(step func(any) error) *ValidationStep {
-	vs := ValidationStep{
+// AddStep adds a validation step
+func (v *BaseValidator) AddStep(step func() error) *BaseValidator {
+	vs := validationStep{
 		fn:             step,
 		breakOnFailure: false,
 	}
 	v.steps = append(v.steps, vs)
 
-	return &v.steps[len(v.steps)-1]
+	return v
 }
 
-func (v Validator) Validate() Result {
+// AddStepWithBreakOnFailure adds a validation step that stops the validation
+// process when failed
+func (v *BaseValidator) AddStepWithBreakOnFailure(step func() error) *BaseValidator {
+	vs := validationStep{
+		fn:             step,
+		breakOnFailure: true,
+	}
+	v.steps = append(v.steps, vs)
+
+	return v
+}
+
+// Validate runs the validation process
+func (v BaseValidator) Validate() Result {
 
 	resp := Result{}
 
 	for _, step := range v.steps {
-		err := step.fn(v.validable)
+		err := step.fn()
 		if err == nil {
 			continue
 		}

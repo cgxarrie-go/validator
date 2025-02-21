@@ -2,91 +2,114 @@ package validator
 
 import (
 	"errors"
+	"sort"
 	"testing"
-
 )
 
-func TestResult_addError(t *testing.T) {
-
-	r := Result{}
-
-	if expected, got := 0, len(r.errors); expected != got {
-		t.Errorf("Unexpected error count. Expected: %v but got: %v", expected, got)
+func TestResult_AddMessage(t *testing.T) {
+	tests := []struct {
+		name     string
+		errorMsg string
+		expected string
+	}{
+		{name: "empty string", errorMsg: "", expected: ""},
+		{name: "white spaces", errorMsg: "   ", expected: ""},
+		{name: "valid message", errorMsg: "error-message", expected: "error-message"},
 	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			e := Result{}
+			e.AddFailureMessage(tt.errorMsg)
 
-	r.addError(errors.New("error-01"))
-	if expected, got := 1, len(r.errors); expected != got {
-		t.Errorf("Unexpected error count. Expected: %v but got: %v", expected, got)
-	}
-
-	r.addError(errors.New("error-02"))
-	if expected, got := 2, len(r.errors); expected != got {
-		t.Errorf("Unexpected error count. Expected: %v but got: %v", expected, got)
+			if expected, got := tt.expected, e.GetFailureMessages()[0]; expected != got {
+				t.Errorf("Unexpected Error() value. Expected: %v but got: %v", expected, got)
+			}
+		})
 	}
 }
 
+type valueForAddParameterIsNotValid struct {
+	name string
+	age  int
+}
+
 func TestResult_IsSuccess(t *testing.T) {
-
-	r := Result{}
-
-	if expected, got := true, r.IsSuccess(); expected != got {
-		t.Errorf("Unexpected IsSuccess. Expected: %v but got: %v", expected, got)
+	tests := []struct {
+		name      string
+		errorMsgs []string
+		expected  bool
+	}{
+		{name: "without-errors", errorMsgs: []string{}, expected: true},
+		{name: "with-errors", errorMsgs: []string{"error 1", "error 2"}, expected: false},
 	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			e := Result{}
+			for _, errorMsg := range tt.errorMsgs {
+				e.AddFailureMessage(errorMsg)
+			}
 
-	r.addError(errors.New("error-01"))
-	if expected, got := false, r.IsSuccess(); expected != got {
-		t.Errorf("Unexpected IsSuccess. Expected: %v but got: %v", expected, got)
+			if expected, got := tt.expected, e.IsSuccess(); expected != got {
+				t.Errorf("Unexpected IsSuccess value. Expected: %v but got: %v", expected, got)
+			}
+		})
 	}
 }
 
 func TestResult_IsFailure(t *testing.T) {
-
-	r := Result{}
-
-	if expected, got := false, r.IsFailure(); expected != got {
-		t.Errorf("Unexpected IsFailure. Expected: %v but got: %v", expected, got)
+	tests := []struct {
+		name      string
+		errorMsgs []string
+		expected  bool
+	}{
+		{name: "without-errors", errorMsgs: []string{}, expected: false},
+		{name: "with-errors", errorMsgs: []string{"error 1", "error 2"}, expected: true},
 	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			e := Result{}
+			for _, errorMsg := range tt.errorMsgs {
+				err := errors.New(errorMsg)
+				e.AddFailure(err)
+			}
 
-	r.addError(errors.New("error-01"))
-	if expected, got := true, r.IsFailure(); expected != got {
-		t.Errorf("Unexpected IsFailure. Expected: %v but got: %v", expected, got)
+			if expected, got := tt.expected, e.IsFailure(); expected != got {
+				t.Errorf("Unexpected IsSuccess value. Expected: %v but got: %v", expected, got)
+			}
+		})
 	}
 }
 
 func TestResult_Errors(t *testing.T) {
-
-	r := Result{}
-
-	if expected, got := 0, len(r.Errors()); expected != got {
-		t.Errorf("Unexpected Errors. Expected: %v but got: %v", expected, got)
+	tests := []struct {
+		name      string
+		errorMsgs []string
+		expected  []string
+	}{
+		{name: "without-errors", errorMsgs: []string{}, expected: []string{}},
+		{name: "with-errors", errorMsgs: []string{"error 1", "error 2"}, expected: []string{"error 1", "error 2"}},
 	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			e := Result{}
+			for _, errorMsg := range tt.errorMsgs {
+				err := errors.New(errorMsg)
+				e.AddFailure(err)
+			}
 
-	r.addError(errors.New("error-01"))
-	if expected, got := 1, len(r.Errors()); expected != got {
-		t.Errorf("Unexpected Errors. Expected: %v but got: %v", expected, got)
-	}
+			if expected, got := len(tt.errorMsgs), len(e.GetFailures()); expected != got {
+				t.Errorf("Unexpected len(GetErrors()). Expected: %v but got: %v", expected, got)
+			}
 
-	r.addError(errors.New("error-02"))
-	if expected, got := 2, len(r.Errors()); expected != got {
-		t.Errorf("Unexpected Errors. Expected: %v but got: %v", expected, got)
-	}
-}
+			failureMsgs := e.GetFailureMessages()
+			sort.Strings(tt.expected)
+			sort.Strings(failureMsgs)
 
-func TestResult_Error(t *testing.T) {
-
-	r := Result{}
-
-	if expected, got := "", r.Error(); expected != got {
-		t.Errorf("Unexpected Error. Expected: %v but got: %v", expected, got)
-	}
-
-	r.addError(errors.New("error-01"))
-	if expected, got := "error-01", r.Error(); expected != got {
-		t.Errorf("Unexpected Error. Expected: %v but got: %v", expected, got)
-	}
-
-	r.addError(errors.New("error-02"))
-	if expected, got := "error-01,error-02", r.Error(); expected != got {
-		t.Errorf("Unexpected Error. Expected: %v but got: %v", expected, got)
+			for i := 0; i < len(tt.expected); i++ {
+				if expected, got := tt.expected[i], failureMsgs[i]; expected != got {
+					t.Errorf("Unexpected error at position %d. Expected: %v but got: %v", i, expected, got)
+				}
+			}
+		})
 	}
 }

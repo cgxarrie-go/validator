@@ -1,76 +1,115 @@
+// package validator provides a generic validation framework for validating
+// data of any type.
+//
+// The validator type is a generic type that allows for the definition of
+// multiple validation steps that can be applied to a given data type. Each
+// validation step is represented by a validationStep struct, which contains
+// a validation function and a flag indicating whether to break on failure.
+//
+// The validator type provides methods for adding validation steps, setting
+// the break-on-failure flag, and performing validation on a given data
+// instance.
+//
+// Types:
+//   - validator[T any]: A generic validator type that holds validation steps
+//     and a flag indicating whether to break on failure.
+//
+// Functions:
+//   - (v validator[T]) Validate(src T) Result: Validates the given data instance
+//     using the defined validation steps and returns a Result containing any
+//     validation errors.
+//   - New[T any]() *validator[T]: Creates a new validator instance with no
+//     validation steps and the break-on-failure flag set to false.
+//   - (v *validator[T]) BreakOnFailure() *validator[T]: Sets the break-on-failure
+//     flag to true and returns the validator instance.
+//   - (v *validator[T]) AddStep() *validationStep[T]: Adds a new validation step
+//     to the validator and returns a pointer to the newly added validation step.
+//   - returnError(customError, defaultError error) error: Returns the custom error
+//     if it is not nil, otherwise returns the default error.
 package validator
 
-// Validator .
-type Validator interface {
-	Validate() Result
+type Validator[T any] interface {
+	Validate(src T) Result
 }
 
-// BaseValidator describres a validation process
-type BaseValidator struct {
+type validator[T any] struct {
 	breakOnFailure bool
-	steps          []validationStep
+	validators     []validationStep[T]
 }
 
-// ValidationStep represents a step in the validation process
-type validationStep struct {
-	fn             func() error
-	breakOnFailure bool
-}
+func (v validator[T]) Validate(src T) Result {
+	result := Result{}
 
-// NewBaseValidator instantiates a base validator
-// All validation steps will be run
-func NewBaseValidator() BaseValidator {
-	return BaseValidator{
-		breakOnFailure: false,
-		steps:          []validationStep{},
+	if len(v.validators) == 0 {
+		result.AddFailureMessage("No validation steps defined")
+		return result
 	}
+
+	for _, step := range v.validators {
+		err := step.validator(src)
+
+		if err != nil {
+
+			if res, ok := err.(Result); ok {
+				for _, v := range res.GetFailures() {
+					result.AddFailure(v)
+				}
+			} else {
+				result.AddFailure(err)
+			}
+
+			if step.breakOnFailure || v.breakOnFailure {
+				return result
+			}
+		}
+	}
+
+	return result
 }
 
-// BreakOnFailure sets the validator to stop after first failure found.
-func (v *BaseValidator) BreakOnFailure() *BaseValidator {
+// New creates a new validator instance with no validation steps and the
+// break-on-failure flag set to false.
+func New[T any]() *validator[T] {
+	return &validator[T]{
+		breakOnFailure: false,
+		validators:     make([]validationStep[T], 0),
+	}
+
+}
+
+func (v *validator[T]) BreakOnFailure() *validator[T] {
 	v.breakOnFailure = true
 	return v
 }
 
-// AddStep adds a validation step
-func (v *BaseValidator) AddStep(step func() error) *BaseValidator {
-	vs := validationStep{
-		fn:             step,
-		breakOnFailure: false,
+func (v *validator[T]) AddStep(steps ...func(req T) error) *validationStep[T] {
+
+	if steps == nil {
+		steps = []func(req T) error{func(T) error { return nil }}
 	}
-	v.steps = append(v.steps, vs)
 
-	return v
-}
-
-// AddStepWithBreakOnFailure adds a validation step that stops the validation
-// process when failed
-func (v *BaseValidator) AddStepWithBreakOnFailure(step func() error) *BaseValidator {
-	vs := validationStep{
-		fn:             step,
-		breakOnFailure: true,
-	}
-	v.steps = append(v.steps, vs)
-
-	return v
-}
-
-// Validate runs the validation process
-func (v BaseValidator) Validate() Result {
-
-	resp := Result{}
-
-	for _, step := range v.steps {
-		err := step.fn()
-		if err == nil {
-			continue
+	for _, step := range steps {
+		validationStep := validationStep[T]{
+			breakOnFailure: false,
+			validator:      step,
 		}
 
-		resp.addError(err)
-		if v.breakOnFailure || step.breakOnFailure {
-			return resp
-		}
+		v.validators = append(v.validators, validationStep)
+
 	}
 
-	return resp
+	return &v.validators[len(v.validators)-1]
+}
+
+func (v *validator[T]) AddValidator(validator Validator[T]) {
+
+	step := func(req T) error {
+		result := validator.Validate(req)
+		if result.IsFailure() {
+			return result
+		}
+		return nil
+	}
+
+	v.AddStep(step)
 }

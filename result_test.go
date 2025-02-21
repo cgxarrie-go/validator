@@ -4,6 +4,8 @@ import (
 	"errors"
 	"sort"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestResult_AddMessage(t *testing.T) {
@@ -21,9 +23,13 @@ func TestResult_AddMessage(t *testing.T) {
 			e := Result{}
 			e.AddFailureMessage(tt.errorMsg)
 
-			if expected, got := tt.expected, e.GetFailureMessages()[0]; expected != got {
-				t.Errorf("Unexpected Error() value. Expected: %v but got: %v", expected, got)
+			if tt.expected == "" {
+				assert.Len(t, e.GetFailures(), 0)
+				return
 			}
+
+			assert.Len(t, e.GetFailures(), 1)
+			assert.Equal(t, tt.expected, e.GetFailureMessages()[0])
 		})
 	}
 }
@@ -49,9 +55,7 @@ func TestResult_IsSuccess(t *testing.T) {
 				e.AddFailureMessage(errorMsg)
 			}
 
-			if expected, got := tt.expected, e.IsSuccess(); expected != got {
-				t.Errorf("Unexpected IsSuccess value. Expected: %v but got: %v", expected, got)
-			}
+			assert.Equal(t, tt.expected, e.IsSuccess())
 		})
 	}
 }
@@ -73,9 +77,7 @@ func TestResult_IsFailure(t *testing.T) {
 				e.AddFailure(err)
 			}
 
-			if expected, got := tt.expected, e.IsFailure(); expected != got {
-				t.Errorf("Unexpected IsSuccess value. Expected: %v but got: %v", expected, got)
-			}
+			assert.Equal(t, tt.expected, e.IsFailure())
 		})
 	}
 }
@@ -97,18 +99,14 @@ func TestResult_Errors(t *testing.T) {
 				e.AddFailure(err)
 			}
 
-			if expected, got := len(tt.errorMsgs), len(e.GetFailures()); expected != got {
-				t.Errorf("Unexpected len(GetErrors()). Expected: %v but got: %v", expected, got)
-			}
+			assert.Equal(t, tt.expected, e.GetFailureMessages())
 
 			failureMsgs := e.GetFailureMessages()
 			sort.Strings(tt.expected)
 			sort.Strings(failureMsgs)
 
 			for i := 0; i < len(tt.expected); i++ {
-				if expected, got := tt.expected[i], failureMsgs[i]; expected != got {
-					t.Errorf("Unexpected error at position %d. Expected: %v but got: %v", i, expected, got)
-				}
+				assert.Equal(t, tt.expected[i], failureMsgs[i])
 			}
 		})
 	}

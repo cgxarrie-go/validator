@@ -1,139 +1,225 @@
-# validator
-Flexible validator for Go
 
-# installation
+# Validation
 
-```
-go get github.com/cgxarrie-go/validator.git
-```
-
-# Sample of use
-
-**Declare struct to be validated**
-```
-type customer struct {
-	name    string
-	surname string
-	age     int
-}
-```
-
-**Declare the validator and its constructor**
-Declare validator type and its constructor along with the funcs to be the validation steps
-```
-
-type customerValidator struct {
-	validator.BaseValidator
-	customer  // include the type t be validated
-}
-
-func newCustomerValidator(c customer) validator.Validator {
-	v := customerValidator{
-		BaseValidator: validator.NewBaseValidator(),
-		customer:      c,
-	}
-
-	v.AddStep(v.nameShouldNotBeEmpty).
-		AddStep(v.surnameShouldNotBeEmpty).
-		AddStep(v.ageShouldBeOver17)
-
-	return v
-}
-
-func (v customerValidator) nameShouldNotBeEmpty() error {
-	if v.customer.name == "" {
-		return errors.New("name is empty")
-	}
-	return nil
-}
-
-func (v customerValidator) surnameShouldNotBeEmpty() error {
-	if v.customer.surname == "" {
-		return errors.New("surname is empty")
-	}
-	return nil
-}
-
-func (v customerValidator) ageShouldBeOver17() error {
-	if v.customer.age <= 17 {
-		return errors.New("age should be over 17")
-	}
-	return nil
-}
-```
+- [Result](#result) 
+- [Validation Step](#validation-step)
+- [Validator](#validator)
+- [Conditional Validator](#conditional-validator)
 
 
-## Use the validator
+## Result
 
-```
+Offers a versatile response object to return as validation result with the ability to return a collection of failures
+
+
+```Go
 import (
-	"errors"
-	"fmt"
-	
-	validatorgo "github.com/cgxarrie-go/validator.git"
+    "github.com/cgxarrie-go/validator"
 )
+
+
+func main() {
+    objectToValidate := any object instance 
+
+    result := validate(objectToValidate)
+    // Any of the following conditions can be checked
+
+    if result.IsFailure() {
+        // actions
+        fmt.Println(result.Error()) // prints all the errors concatenated by semicolon (;)
+
+        for _, v := range result.Getrrors()) {
+            fmt.Println(v) // prints each error individually
+            }
+    }
+
+    if result.IsSuccess(){
+        // actions
+    }
+}
+
+func validate(objToValidate anyType) (result validator.result) {
+
+    if (objectToValidate does not meet condition 1) {
+        result.AddFailureMessage("condition 1 not met")
+    }
+
+    if (objectToValidate does not meet condition 2) {
+        f := errors.New("condition 2 not met")
+        result.AddFailure(f)
+    }
+
+    return result
+
+}
+
+```
+
+
+## Validation Step
+Functon to be added to  a validator as a validation step
+
+### Methods
+#### BreakOnFailure
+
+If added to a step, the validator will stop processing steps when the step fails
+
+```Go
+import (
+    "github.com/cgxarrie-go/validator"
+)
+
+type dummyType struct {
+    Field1 string
+    Field2 int
+    Field3 bool
+    ...
+}
+
+func main() {
+    condition1 := func(src dummyType) error { 
+        // validation logic
+        return error if fails, otherwise
+        return nil 
+        }
+
+    vldtr := validator.NewValidator[dummyType]()
+    vldtr.AddStep(condition1).
+        BreakOnFailure() // optional - stops processing if the step fails
+
+    req := Instance_Of_DummyType
+    result := vldtr.Validate(req)
+}
+
+```
+
+## Validator
+
+Offers a versatile response object to return as validation result with the ability to return a collection of error messages
+
+Validation is build by adding validation steps to a validator instance
+
+vldtr.BreakOnFailure() configures the validator to stop processing steps when the first failure is encountered
+ValidatorStep.BreakOnFailure() configures the step to stop processing if the step fails
+
+### Methods
+
+#### BreakOnFailure
+If added to a validator, the validator will stop processing steps when the first step fails
+
+
+#### AddStep
+Adds a step to the validator
+
+The result of the validation will include all the added steps and the steps
+
+#### AddValidator
+Adds a validator a a step to the current validator
+
+The result of the validation will include all the added steps and the steps of the added validator
+
+#### Validate()
+Runs the validation steps and returns the result
+
+### Example
+
+```Go
+import (
+    "github.com/cgxarrie-go/validator"
+)
+
+type dummyType struct {
+    Field1 string
+    Field2 int
+    Field3 bool
+    ...
+}
+
+func main() {
+    condition1 := func(src dummyType) error { 
+        // validation logic
+        return error if fails, otherwise
+        return nil 
+        }
+
+        condition2 := func(src dummyType) error {
+        // validation logic
+        return error if fails, otherwise
+        return nil
+    }
+
+    validator1 := validator.NewValidator[dummyType]()
+    validator1.AddStep(condition1)
+
+    validator2 := validator.NewValidator[dummyType]().
+        BreakOnFailure()
+    validator2.AddValidator(validator1)
+    validator2.AddStep(condition2)
+
+    req := Instance_Of_DummyType
+    result := validator2.Validate(req)
+}
+
+
+```
+
+## Conditional Validator
+This is a validator composed by many validators, each of which is executed based on a condition
+
+### Methods
+
+#### WithCondition
+Adds a condition to the vldtr.
+The condition is a function returning the condition type
+
+
+#### WithValidator
+States the validator to be run for a specific condition value
+
+#### WithDefaultValidator
+States the validator to be run if no condition is met
+If no default validator is set, and thhere is no validator for the condition value, the conditional validator will return a failure result
+
+
+#### Validate
+Evaluates the condition and runs the validation for the corresponding validator
+
+### Example
+
+
+```Go
+import (
+    "github.com/cgxarrie-go/validator"
+)
+
+type dummyType struct {
+    Field1 string
+    Field2 int
+    Field3 bool
+    ...
+}
 
 func main() {
 
-	cust := customer{
-		name:    "John",
-		surname: "",
-		age:     15,
-	}
+    defaultvldtr := validator.NewValidator[dummyType]()
+    validator1 := validator.NewValidator[dummyType]()
+    validator2 := validator.NewValidator[dummyType]()
+    validator3 := validator.NewValidator[dummyType]()
 
-	validator := newCustomerValidator(cust)
+    condition1 := func(req dummyType) int { 
+        return req.Field2 
+        }
 
-	result := validator.Validate()
+    vldtr := validator.NewConditionalValidator[int, dummyType]()
+    vldtr.WithCondition(condition1)
+    vldtr.WithDefaultValidator(defaultValidator)
+    vldtr.WithValidator(1, validator1)
+    vldtr.WithValidator(2, validator2)
+    vldtr.WithValidator(3, validator3)
 
-	for _, err := range result.Errors() {
-		fmt.Printf("validator error : %s\n", err)
-	}
 
+    req := Instance_Of_DummyType
+    result := vldtr.Validate(req)
 }
 
-```
-
-** output **
-```
-validator error : surname is empty
-validator error : age should be over 17
-```
-
-
-```
-import (
-	"errors"
-	"fmt"
-	
-	validatorgo "github.com/cgxarrie/validator-go.git"
-)
-
-func main() {
-
-	validable := validable{
-		name:    "",
-		surname: "",
-		age:     15,
-	}
-
-	validator := NewValidator(validable)
-
-	validator.AddStep(nameShouldNotBeEmpty)
-	validator.AddStep(surnameShouldNotBeEmpty).BreakOnFailure()
-	validator.AddStep(ageShouldBeOver17)
-
-	result := validator.Validate()
-
-	for _, err := range result.Errors() {
-		fmt.Printf("Validation error : %s\n", err)
-	}
-
-}
-
-```
-
-** output **
-```
-validator error : name is empty
-validator error : surname is empty
 ```

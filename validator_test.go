@@ -1,188 +1,129 @@
-package validator
+package validator_test
 
 import (
 	"errors"
-	"strings"
 	"testing"
 
-	"github.com/magiconair/properties/assert"
+	"github.com/cgxarrie-go/validator"
+	"github.com/stretchr/testify/assert"
 )
 
-func TestBaseValidator_New_ShouldReturnNoBreakOnFailure(t *testing.T) {
+type dummyType struct {
+}
 
+func Test_Validator_WhenAllStepsPass_ShouldReturnSuccess(t *testing.T) {
 	// Arrange
 
+	req := dummyType{}
+
+	step1 := func(src dummyType) error { return nil }
+	step2 := func(src dummyType) error { return nil }
+	step3 := func(src dummyType) error { return nil }
+
+	v := validator.New[dummyType]()
+	v.AddStep(step1)
+	v.AddStep(step2)
+	v.AddStep(step3)
+
 	// Act
-	v := NewBaseValidator()
+	result := v.Validate(req)
 
 	// Assert
-	assert.Equal(t, false, v.breakOnFailure)
-	assert.Equal(t, 0, len(v.steps))
+	assert.True(t, result.IsSuccess())
 }
 
-func TestBaseValidator_NewBreakOnFailure_ShouldReturnBreakOnFailure(t *testing.T) {
-
+func Test_Validator_WhenNoStepsDefined_ShouldReturnFailure(t *testing.T) {
 	// Arrange
 
+	req := dummyType{}
+
+	v := validator.New[dummyType]()
+
 	// Act
-	v := NewBaseValidator()
-	v.BreakOnFailure()
+	result := v.Validate(req)
 
 	// Assert
-	assert.Equal(t, true, v.breakOnFailure)
-	assert.Equal(t, 0, len(v.steps))
+	assert.True(t, result.IsFailure())
+	errors := result.GetFailures()
+	assert.Len(t, errors, 1)
+	assert.ErrorContains(t, errors[0], "No validation steps defined")
 }
 
-func TestBaseValidator_AddStep(t *testing.T) {
+func Test_Validator_WhenBreakOnFailureIsSet_ShouldReturnFailureOnFirstError(t *testing.T) {
 
-	v := BaseValidator{}
+	// Arrange
+	req := dummyType{}
 
-	if expected, got := 0, len(v.steps); expected != got {
-		t.Errorf("Unexpected steps count. Expected: %v but got: %v", expected, got)
-	}
+	step1 := func(src dummyType) error { return nil }
+	step2 := func(src dummyType) error { return errors.New("Error-2") }
+	step3 := func(src dummyType) error { return errors.New("Error-3") }
 
-	v.AddStep(func() error {
-		return nil
-	})
+	v := validator.New[dummyType]().BreakOnFailure()
+	v.AddStep(step1)
+	v.AddStep(step2)
+	v.AddStep(step3)
 
-	if expected, got := 1, len(v.steps); expected != got {
-		t.Errorf("Unexpected steps count. Expected: %v but got: %v", expected, got)
-	}
+	// Act
+	result := v.Validate(req)
 
-	v.AddStep(func() error {
-		return nil
-	})
-
-	if expected, got := 2, len(v.steps); expected != got {
-		t.Errorf("Unexpected steps count. Expected: %v but got: %v", expected, got)
-	}
+	// Assert
+	assert.True(t, result.IsFailure())
+	errors := result.GetFailures()
+	assert.Len(t, errors, 1)
+	assert.ErrorContains(t, errors[0], "Error-2")
 }
 
-func TestBaseValidator_Validate_FailedStepShouldReturnFailure(t *testing.T) {
+func Test_Validator_WhenStepBreakOnFailureIsSet_ShouldReturnFailureWithAllErrorsUntilTheStep(t *testing.T) {
 
-	v := BaseValidator{}
-	v.AddStep(func() error {
-		return errors.New("error-step-01")
-	})
+	// Arrange
+	req := dummyType{}
 
-	result := v.Validate()
+	step1 := func(src dummyType) error { return nil }
+	step2 := func(src dummyType) error { return errors.New("Error-2") }
+	step3 := func(src dummyType) error { return errors.New("Error-3") }
+	step4 := func(src dummyType) error { return errors.New("Error-4") }
 
-	if expected, got := true, result.IsFailure(); expected != got {
-		t.Errorf("Unexpected IsFailure. Expected: %v but got: %v", expected, got)
-	}
+	v := validator.New[dummyType]()
+	v.AddStep(step1)
+	v.AddStep(step2)
+	v.AddStep(step3).BreakOnFailure()
+	v.AddStep(step4)
+
+	// Act
+	result := v.Validate(req)
+
+	// Assert
+	assert.True(t, result.IsFailure())
+	failures := result.GetFailures()
+	assert.Len(t, failures, 2)
+	assert.ErrorContains(t, failures[0], "Error-2")
+	assert.ErrorContains(t, failures[1], "Error-3")
 }
 
-func TestBaseValidator_Validate_SuccessStepShouldReturnSuccess(t *testing.T) {
+func Test_Validator_WhenBreakOnFailureIsNotSet_ShouldReturnFailureWithAllErrors(t *testing.T) {
 
-	v := BaseValidator{}
-	v.AddStep(func() error {
-		return nil
-	})
+	// Arrange
+	req := dummyType{}
 
-	result := v.Validate()
+	step1 := func(src dummyType) error { return nil }
+	step2 := func(src dummyType) error { return errors.New("Error-2") }
+	step3 := func(src dummyType) error { return errors.New("Error-3") }
+	step4 := func(src dummyType) error { return errors.New("Error-4") }
 
-	if expected, got := true, result.IsSuccess(); expected != got {
-		t.Errorf("Unexpected IsSuccess. Expected: %v but got: %v", expected, got)
-	}
-}
+	v := validator.New[dummyType]()
+	v.AddStep(step1)
+	v.AddStep(step2)
+	v.AddStep(step3)
+	v.AddStep(step4)
 
-func TestBaseValidator_Validate_BreakOnFailureFalseShouldReturnAllErrors(t *testing.T) {
+	// Act
+	result := v.Validate(req)
 
-	v := BaseValidator{}
-	v.AddStep(func() error {
-		return errors.New("error-step-01")
-	})
-
-	v.AddStep(func() error {
-		return errors.New("error-step-02")
-	})
-
-	result := v.Validate()
-
-	if expected, got := true, result.IsFailure(); expected != got {
-		t.Errorf("Unexpected IsFailure. Expected: %v but got: %v", expected, got)
-	}
-
-	if expected, got := 2, len(result.Errors()); expected != got {
-		t.Errorf("Unexpected Errors count. Expected: %v but got: %v", expected, got)
-	}
-
-	if expected, got := true, strings.Contains(result.Error(), "error-step-01"); expected != got {
-		t.Errorf("Expected error-step-01 not found. Expected: %v but got: %v", expected, got)
-	}
-
-	if expected, got := true, strings.Contains(result.Error(), "error-step-02"); expected != got {
-		t.Errorf("Expected error-step-02 not found. Expected: %v but got: %v", expected, got)
-	}
-}
-
-func TestBaseValidator_Validate_BreakOnFailureTrueShouldReturnFirstError(t *testing.T) {
-
-	v := NewBaseValidator()
-	v.BreakOnFailure()
-
-	v.AddStep(func() error {
-		return errors.New("error-step-01")
-	})
-
-	v.AddStep(func() error {
-		return errors.New("error-step-02")
-	})
-
-	result := v.Validate()
-
-	if expected, got := true, result.IsFailure(); expected != got {
-		t.Errorf("Unexpected IsFailure. Expected: %v but got: %v", expected, got)
-	}
-
-	if expected, got := 1, len(result.Errors()); expected != got {
-		t.Errorf("Unexpected Errors count. Expected: %v but got: %v", expected, got)
-	}
-
-	if expected, got := true, strings.Contains(result.Error(), "error-step-01"); expected != got {
-		t.Errorf("Expected error-step-01 not found. Expected: %v but got: %v", expected, got)
-	}
-
-	if expected, got := false, strings.Contains(result.Error(), "error-step-02"); expected != got {
-		t.Errorf("Unexpected error-step-02 found. Expected: %v but got: %v", expected, got)
-	}
-}
-
-func TestBaseValidator_Validate_ValidationStepBreakOnFailureTrueShouldReturnErrorsUntilStep(t *testing.T) {
-
-	v := BaseValidator{}
-	v.AddStep(func() error {
-		return errors.New("error-step-01")
-	})
-
-	v.AddStepWithBreakOnFailure(func() error {
-		return errors.New("error-step-02")
-	})
-
-	v.AddStep(func() error {
-		return errors.New("error-step-03")
-	})
-
-	result := v.Validate()
-
-	if expected, got := true, result.IsFailure(); expected != got {
-		t.Errorf("Unexpected IsFailure. Expected: %v but got: %v", expected, got)
-	}
-
-	if expected, got := 2, len(result.Errors()); expected != got {
-		t.Errorf("Unexpected Errors count. Expected: %v but got: %v", expected, got)
-	}
-
-	if expected, got := true, strings.Contains(result.Error(), "error-step-01"); expected != got {
-		t.Errorf("Expected error-step-01 not found. Expected: %v but got: %v", expected, got)
-	}
-
-	if expected, got := true, strings.Contains(result.Error(), "error-step-02"); expected != got {
-		t.Errorf("Unexpected error-step-02 found. Expected: %v but got: %v", expected, got)
-	}
-
-	if expected, got := false, strings.Contains(result.Error(), "error-step-03"); expected != got {
-		t.Errorf("Unexpected error-step-02 found. Expected: %v but got: %v", expected, got)
-	}
-
+	// Assert
+	assert.True(t, result.IsFailure())
+	errors := result.GetFailures()
+	assert.Len(t, errors, 3)
+	assert.ErrorContains(t, errors[0], "Error-2")
+	assert.ErrorContains(t, errors[1], "Error-3")
+	assert.ErrorContains(t, errors[2], "Error-4")
 }

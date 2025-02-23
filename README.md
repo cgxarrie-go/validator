@@ -1,22 +1,37 @@
+# Validator
 
-# Validation
-
+- [Installation](#installation)
 - [Result](#result) 
 - [Validation Step](#validation-step)
 - [Validator](#validator)
 - [Conditional Validator](#conditional-validator)
 
+## Installation
+```Bash
+go get github.com/cgxarrie-go/validator@latest
+```
 
-## Result
+## How to use the Validator
+
+### Result
 
 Offers a versatile response object to return as validation result with the ability to return a collection of failures
 
+#### Methods
+
+- AddFailureMessage(s string): Adds a failure with the given string
+- AddFailure(err error): Adds a failure for the given error
+- GetFailureMessages(): Return a slice containing all failures stringified
+- GetFailures(): Returns a slice containing all the failures
+- IsFailure(): Returns true if the number of failures is greater than 0. Otherwise it returns false
+- IsSuccess(): Returns true if the number of failures is 0. Otherwise it returns false
+
+#### Example
 
 ```Go
 import (
     "github.com/cgxarrie-go/validator"
 )
-
 
 func main() {
     objectToValidate := any object instance 
@@ -55,14 +70,11 @@ func validate(objToValidate anyType) (result validator.result) {
 
 ```
 
-
-## Validation Step
+### Validation Step
 Functon to be added to  a validator as a validation step
 
-### Methods
-#### BreakOnFailure
-
-If added to a step, the validator will stop processing steps when the step fails
+#### Methods
+- BreakOnFailure(): Forces the validator to stop processing validations steps if the current validation fails
 
 ```Go
 import (
@@ -93,7 +105,7 @@ func main() {
 
 ```
 
-## Validator
+### Validator
 
 Offers a versatile response object to return as validation result with the ability to return a collection of error messages
 
@@ -102,26 +114,14 @@ Validation is build by adding validation steps to a validator instance
 vldtr.BreakOnFailure() configures the validator to stop processing steps when the first failure is encountered
 ValidatorStep.BreakOnFailure() configures the step to stop processing if the step fails
 
-### Methods
+#### Methods
 
-#### BreakOnFailure
-If added to a validator, the validator will stop processing steps when the first step fails
+- BreakOnFailure(): If added to a validator, the validator will stop processing steps whenever there is a failure
+- AddStep(fn): Adds a step to the validator
+- AddValidator(validator): Adds a validator a a step to the current validator.The result of the validation will include all the added steps and the steps of the added validator
+-Validate(request): Runs the validation steps and returns the result
 
-
-#### AddStep
-Adds a step to the validator
-
-The result of the validation will include all the added steps and the steps
-
-#### AddValidator
-Adds a validator a a step to the current validator
-
-The result of the validation will include all the added steps and the steps of the added validator
-
-#### Validate()
-Runs the validation steps and returns the result
-
-### Example
+#### Example
 
 ```Go
 import (
@@ -163,29 +163,16 @@ func main() {
 
 ```
 
-## Conditional Validator
+### Conditional Validator
 This is a validator composed by many validators, each of which is executed based on a condition
 
-### Methods
+#### Methods
+- WithCondition(fn): Adds a condition to the validator. The condition is a function returning the condition type
+- WithValidator(value, validator): States the validator to be run for a specific condition value
+- WithDefaultValidator(validator): States the validator to be run if no condition is met. If no default validator is set, and thhere is no validator for the condition value, the conditional validator will return a failure result
+- Validate(request): Evaluates the condition and runs the validation for the corresponding validator
 
-#### WithCondition
-Adds a condition to the vldtr.
-The condition is a function returning the condition type
-
-
-#### WithValidator
-States the validator to be run for a specific condition value
-
-#### WithDefaultValidator
-States the validator to be run if no condition is met
-If no default validator is set, and thhere is no validator for the condition value, the conditional validator will return a failure result
-
-
-#### Validate
-Evaluates the condition and runs the validation for the corresponding validator
-
-### Example
-
+#### Example
 
 ```Go
 import (

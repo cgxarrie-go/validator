@@ -1,10 +1,11 @@
 # Validator
 
 - [Installation](#installation)
-- [Result](#result) 
-- [Validation Step](#validation-step)
-- [Validator](#validator)
-- [Conditional Validator](#conditional-validator)
+- [How to use the validator](#how-to-use-the-validator)
+    - [Result](#result) 
+    - [Validation Step](#validation-step)
+    - [Validator](#validator)
+    - [Conditional Validator](#conditional-validator)
 
 ## Installation
 ```Bash
